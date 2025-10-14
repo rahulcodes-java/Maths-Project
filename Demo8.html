@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Hashing & Pigeonhole Principle Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for dark theme */
+        body {
+            background-color: #0f172a; /* Slate-900 / Dark Navy */
+            color: #e2e8f0; /* Slate-200 / Off-White */
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        }
+        .slot {
+            transition: background-color 0.15s ease-in-out;
+            min-height: 2rem;
+            border: 1px solid #475569; /* Slate-600 */
+            background-color: #1e293b; /* Slate-800 / Indigo Base */
+        }
+        .slot-content {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .slot-item {
+            font-size: 0.75rem;
+            padding: 1px 4px;
+            margin: 1px 0;
+            border-radius: 2px;
+            background-color: #4f46e5; /* Indigo-600 */
+            color: white;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .log-panel {
+            min-height: 150px;
+            max-height: 300px;
+            overflow-y: scroll;
+            background-color: #020617; /* Slate-950 */
+            border: 1px solid #475569;
+            font-size: 0.8rem;
+            padding: 8px;
+        }
+        .math-warning {
+            border-left: 4px solid #f59e0b; /* Amber-500 */
+            background-color: #78350f; /* Amber-900 */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <h1 class="text-3xl font-bold text-indigo-400 mb-6">Cryptographic Hashing & Pigeonhole Demo 🐦</h1>
+
+        <div id="educational-disclaimer" class="p-3 mb-6 bg-red-900/50 border-l-4 border-red-500 rounded text-sm">
+            **DISCLAIMER:** This demonstration uses **truncated hashes** for educational purposes to quickly visualize collisions. It **does not** represent real-world cryptographic vulnerability or encourage attacks. Real cryptographic hashes are vastly longer and collisions are computationally infeasible to find.
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <div class="lg:col-span-1 space-y-6">
+
+                <div class="bg-slate-800 p-4 rounded-lg shadow-xl border border-slate-700">
+                    <h2 class="text-xl font-semibold mb-3 text-indigo-300">Demo Controls</h2>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Number of Slots (N):</label>
+                            <input type="number" id="numSlots" value="100" min="10" class="w-full p-2 rounded bg-slate-700 border border-slate-600 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Number of Inputs (M):</label>
+                            <input type="number" id="numInputs" value="150" min="10" class="w-full p-2 rounded bg-slate-700 border border-slate-600 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Hash Algorithm:</label>
+                            <select id="hashAlgorithm" class="w-full p-2 rounded bg-slate-700 border border-slate-600 text-sm" onchange="updateTruncationInfo()">
+                                <option value="sha256">SHA-256 (Web Crypto)</option>
+                                <option value="sha1">SHA-1 (Web Crypto)</option>
+                                <option value="md5">MD5 (In-Page Lib)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Truncation Length (K Hex Chars):</label>
+                            <input type="number" id="truncationLength" value="2" min="1" max="8" class="w-full p-2 rounded bg-slate-700 border border-slate-600 text-sm" oninput="updateTruncationInfo()">
+                            <p class="text-xs text-slate-400 mt-1">First K hex chars used for slot mapping.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-5 flex space-x-2">
+                        <button id="startButton" class="flex-1 p-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition">Start Demo</button>
+                        <button id="pauseButton" class="p-2 rounded bg-yellow-600 hover:bg-yellow-700 text-white font-semibold text-sm transition" disabled>Pause</button>
+                        <button id="resetButton" class="p-2 rounded bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition">Clear/Reset</button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 p-4 rounded-lg shadow-xl border border-slate-700">
+                    <h2 class="text-xl font-semibold mb-3 text-indigo-300">Live Status</h2>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <p>Inputs Processed (M): <span id="processedCount" class="font-bold text-green-400">0</span></p>
+                        <p>Collisions Found: <span id="collisionsCount" class="font-bold text-red-400">0</span></p>
+                        <p>Unique Slots Used: <span id="uniqueSlotsCount" class="font-bold text-indigo-400">0</span></p>
+                        <p>Attempts/Sec: <span id="apsCount" class="font-bold text-yellow-400">0.00</span></p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 p-4 rounded-lg shadow-xl border border-slate-700">
+                    <h2 class="text-xl font-semibold mb-3 text-indigo-300">Simulation Log</h2>
+                    <div id="logConsole" class="log-panel">
+                        </div>
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-2">
+                <div id="visualizationArea" class="p-4 rounded-lg shadow-xl border border-slate-700">
+                    <h2 class="text-xl font-semibold mb-3 text-indigo-300">Hash Slots (Pigeonholes: N=<span id="slotCountDisplay">100</span>)</h2>
+                    <div id="slotGrid" class="grid gap-2" style="grid-template-columns: repeat(10, minmax(0, 1fr));">
+                        </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            
+            <div class="bg-slate-800 p-4 rounded-lg shadow-xl border border-slate-700 space-y-4">
+                <h2 class="text-xl font-semibold text-indigo-300">Pigeonhole Principle Math</h2>
+                
+                <p class="text-sm">Truncation length (K): <span id="mathK" class="font-mono text-lg text-yellow-400">2</span> hex chars</p>
+                <p class="text-sm">
+                    Maximum possible output space (16^K): 
+                    <span id="outputSpace" class="font-mono text-lg text-green-400">256</span>
+                </p>
+                <p class="text-sm">
+                    Number of Hash Slots (N): 
+                    <span id="mathN" class="font-mono text-lg text-indigo-400">100</span>
+                </p>
+
+                <div id="pigeonholeWarning" class="p-3 mt-3 rounded text-sm math-warning">
+                    <p class="font-bold">Collision Possibility:</p>
+                    </div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-lg shadow-xl border border-slate-700">
+                <h2 class="text-xl font-semibold mb-3 text-indigo-300">Hash Inspector</h2>
+                <input type="text" id="inspectorInput" placeholder="Enter text to hash (e.g., secret)" class="w-full p-2 rounded bg-slate-700 border border-slate-600 mb-3 text-sm">
+                <button id="computeHashesButton" class="w-full p-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition">Compute Hashes</button>
+                
+                <div class="mt-4 text-sm space-y-2">
+                    <p>MD5: <span id="inspectorMD5" class="font-mono text-yellow-400">...</span></p>
+                    <p>SHA-1: <span id="inspectorSHA1" class="font-mono text-yellow-400">...</span></p>
+                    <p>SHA-256: <span id="inspectorSHA256" class="font-mono text-yellow-400">...</span></p>
+                </div>
+                
+                <h3 class="text-base font-semibold mt-4 text-slate-300">Raw Output Status (JSON Style)</h3>
+                <pre id="inspectorJSON" class="bg-slate-900 p-2 rounded text-xs overflow-x-auto mt-2 text-green-300">
+{
+  "status": "Awaiting input...",
+  "time": ""
+}
+                </pre>
+            </div>
+        </div>
+        
+        <div class="mt-8 pt-6 border-t border-slate-700 space-y-6">
+            <h2 class="text-2xl font-bold text-indigo-400">Cryptography Education</h2>
+
+            <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                <h3 class="text-xl font-semibold text-indigo-300 mb-2">What is a Hash Function?</h3>
+                <p>A cryptographic hash function is a one-way mathematical algorithm that takes an input (or 'message') of arbitrary length and outputs a fixed-length string of bytes, typically represented as a hexadecimal number (the 'hash' or 'digest'). Key properties include:</p>
+                <ul class="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
+                    <li>**Deterministic:** The same input always produces the same output.</li>
+                    <li>**Pre-image Resistance (One-Way):** It's computationally infeasible to reverse the process—to determine the original input from the hash output.</li>
+                    <li>**Collision Resistance:** It's computationally infeasible to find two different inputs that produce the same hash output (a collision).</li>
+                </ul>
+                <p class="text-sm mt-2 text-slate-400">Hashes are used for digital signatures, password storage (never store passwords directly!), and verifying data integrity.</p>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                <h3 class="text-xl font-semibold text-indigo-300 mb-2">What is the Pigeonhole Principle?</h3>
+                <p>The Pigeonhole Principle is a simple but profound concept in mathematics: **if you have more items (pigeons) than containers (pigeonholes), at least one container must contain more than one item.**</p>
+                <p class="text-sm mt-2">In cryptography, the "pigeons" are the infinite number of possible inputs (messages), and the "pigeonholes" are the finite number of possible hash outputs (the fixed-length space). Since the input space is virtually infinite and the output space is finite (e.g., $2^{256}$ for SHA-256), **collisions are mathematically guaranteed to exist**.</p>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                <h3 class="text-xl font-semibold text-indigo-300 mb-2">Why Do Collisions Matter?</h3>
+                <p>In cryptography, finding a collision means an attacker could potentially replace an authentic message or document with a fraudulent one, yet still produce the same digital signature or integrity check. This breaks the **trust** model of the hash function.</p>
+                <ul class="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
+                    <li>**MD5 and SHA-1** are considered cryptographically broken because methods exist to find collisions faster than brute force ($2^{128}$ or $2^{80}$ respectively).</li>
+                    <li>**SHA-256** remains strong because while collisions exist mathematically (Pigeonhole Principle), the time and energy required to find even one is currently infeasible (estimated to be about $2^{128}$ operations).</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- MD5 Implementation (MIT License) ---
+        // This is a minimal, self-contained MD5 implementation used for demonstration only.
+        var md5 = function() {
+          function safe_add(x, y) {
+            var lsw = (x & 0xFFFF) + (y & 0xFFFF);
+            var msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+            return (msw << 16) | (lsw & 0xFFFF);
+          }
+          function bit_rol(num, cnt) {
+            return (num << cnt) | (num >>> (32 - cnt));
+          }
+          function md5_cmn(q, a, b, x, s, t) {
+            return safe_add(bit_rol(safe_add(safe_add(a, q), safe_add(x, t)), s), b);
+          }
+          function md5_ff(a, b, c, d, x, s, t) {
+            return md5_cmn((b & c) | (~b & d), a, b, x, s, t);
+          }
+          function md5_gg(a, b, c, d, x, s, t) {
+            return md5_cmn((b & d) | (c & ~d), a, b, x, s, t);
+          }
+          function md5_hh(a, b, c, d, x, s, t) {
+            return md5_cmn(b ^ c ^ d, a, b, x, s, t);
+          }
+          function md5_ii(a, b, c, d, x, s, t) {
+            return md5_cmn(c ^ (b | ~d), a, b, x, s, t);
+          }
+          function binl_md5(x, len) {
+            x[len >> 5] |= 0x80 << (len % 32);
+            x[(((len + 64) >>> 9) << 4) + 14] = len;
+
+            var i, a = 1732584193, b = -271733879, c = -1732584194, d = 271733878;
+            for (i = 0; i < x.length; i += 16) {
+              var olda = a, oldb = b, oldc = c, oldd = d;
+
+              a = md5_ff(a, b, c, d, x[i+ 0], 7 , -680876936);
+              d = md5_ff(d, a, b, c, x[i+ 1], 12, -389564586);
+              c = md5_ff(c, d, a, b, x[i+ 2], 17,  606105819);
+              b = md5_ff(b, c, d, a, x[i+ 3], 22, -1044525330);
+              a = md5_ff(a, b, c, d, x[i+ 4], 7 , -1009155205);
+              d = md5_ff(d, a, b, c, x[i+ 5], 12, -45705983);
+              c = md5_ff(c, d, a, b, x[i+ 6], 17, -1770044563);
+              b = md5_ff(b, c, d, a, x[i+ 7], 22, -1958414417);
+              a = md5_ff(a, b, c, d, x[i+ 8], 7 ,  1778993080);
+              d = md5_ff(d, a, b, c, x[i+ 9], 12, -400557450);
+              c = md5_ff(c, d, a, b, x[i+10], 17, -1473231341);
+              b = md5_ff(b, c, d, a, x[i+11], 22, -45705983);
+              a = md5_ff(a, b, c, d, x[i+12], 7 ,  1700485571);
+              d = md5_ff(d, a, b, c, x[i+13], 12, -1894986606);
+              c = md5_ff(c, d, a, b, x[i+14], 17, -10515236);
+              b = md5_ff(b, c, d, a, x[i+15], 22, -2054922799);
+
+              a = md5_gg(a, b, c, d, x[i+ 1], 5 , -1557029530);
+              d = md5_gg(d, a, b, c, x[i+ 6], 9 ,  1278187843);
+              c = md5_gg(c, d, a, b, x[i+11], 14, -1522799793);
+              b = md5_gg(b, c, d, a, x[i+ 0], 20, -1094730640);
+              a = md5_gg(a, b, c, d, x[i+ 5], 5 ,  681279174);
+              d = md5_gg(d, a, b, c, x[i+10], 9 , -358537222);
+              c = md5_gg(c, d, a, b, x[i+15], 14, -2042250109);
+              b = md5_gg(b, c, d, a, x[i+ 4], 20, -1522799793);
+              a = md5_gg(a, b, c, d, x[i+ 9], 5 ,  1257321041);
+              d = md5_gg(d, a, b, c, x[i+14], 9 , -162057399);
+              c = md5_gg(c, d, a, b, x[i+ 3], 14, -1042787720);
+              b = md5_gg(b, c, d, a, x[i+ 8], 20,  1530920663);
+              a = md5_gg(a, b, c, d, x[i+13], 5 , -655701509);
+              d = md5_gg(d, a, b, c, x[i+ 2], 9 , -1763325785);
+              c = md5_gg(c, d, a, b, x[i+ 7], 14,  120260651);
+              b = md5_gg(b, c, d, a, x[i+12], 20, -78660244);
+
+              a = md5_hh(a, b, c, d, x[i+ 5], 4 , -1674928669);
+              d = md5_hh(d, a, b, c, x[i+ 8], 11,  1571478792);
+              c = md5_hh(c, d, a, b, x[i+11], 16, -15750868);
+              b = md5_hh(b, c, d, a, x[i+14], 23, -1067254516);
+              a = md5_hh(a, b, c, d, x[i+ 1], 4 ,  1126116121);
+              d = md5_hh(d, a, b, c, x[i+ 4], 11, -1289139885);
+              c = md5_hh(c, d, a, b, x[i+ 7], 16, -1067254516);
+              b = md5_hh(b, c, d, a, x[i+10], 23,  163467644);
+              a = md5_hh(a, b, c, d, x[i+13], 4 , -1455252814);
+              d = md5_hh(d, a, b, c, x[i+ 0], 11,  1834217117);
+              c = md5_hh(c, d, a, b, x[i+ 3], 16, -1067254516);
+              b = md5_hh(b, c, d, a, x[i+ 6], 23, -1994042878);
+              a = md5_hh(a, b, c, d, x[i+ 9], 4 ,  1610260286);
+              d = md5_hh(d, a, b, c, x[i+12], 11, -1289139885);
+              c = md5_hh(c, d, a, b, x[i+15], 16,  163467644);
+              b = md5_hh(b, c, d, a, x[i+ 2], 23, -1994042878);
+
+              a = md5_ii(a, b, c, d, x[i+ 0], 6 , -1095520868);
+              d = md5_ii(d, a, b, c, x[i+ 7], 10,  1126891415);
+              c = md5_ii(c, d, a, b, x[i+14], 15, -14138118);
+              b = md5_ii(b, c, d, a, x[i+ 5], 21, -1095520868);
+              a = md5_ii(a, b, c, d, x[i+12], 6 ,  1736835334);
+              d = md5_ii(d, a, b, c, x[i+ 3], 10, -2003259451);
+              c = md5_ii(c, d, a, b, x[i+10], 15, -14138118);
+              b = md5_ii(b, c, d, a, x[i+ 1], 21, -11894084);
+              a = md5_ii(a, b, c, d, x[i+ 8], 6 ,  1736835334);
+              d = md5_ii(d, a, b, c, x[i+15], 10, -2003259451);
+              c = md5_ii(c, d, a, b, x[i+ 6], 15,  1800548170);
+              b = md5_ii(b, c, d, a, x[i+13], 21, -1095520868);
+              a = md5_ii(a, b, c, d, x[i+ 4], 6 ,  1126891415);
+              d = md5_ii(d, a, b, c, x[i+11], 10, -14138118);
+              c = md5_ii(c, d, a, b, x[i+ 2], 15, -11894084);
+              b = md5_ii(b, c, d, a, x[i+ 9], 21,  1800548170);
+
+              a = safe_add(a, olda);
+              b = safe_add(b, oldb);
+              c = safe_add(c, oldc);
+              d = safe_add(d, oldd);
+            }
+            return [a, b, c, d];
+          }
+          function str_to_binl(str) {
+            var bin = [], i;
+            for (i = 0; i < str.length * 8; i += 8) {
+              bin[i>>5] |= (str.charCodeAt(i / 8) & 0xFF) << (i%32);
+            }
+            return bin;
+          }
+          function binl_to_hex(binarray) {
+            var hex_tab = '0123456789abcdef';
+            var str = '';
+            for (var i = 0; i < binarray.length * 4; i++) {
+              str += hex_tab.charAt((binarray[i>>2] >> ((i%4)*8+4)) & 0xF) +
+                     hex_tab.charAt((binarray[i>>2] >> ((i%4)*8)) & 0xF);
+            }
+            return str;
+          }
+          return function(s) {
+            return binl_to_hex(binl_md5(str_to_binl(s), s.length * 8));
+          };
+        }();
+        // --- End MD5 Implementation ---
+
+        // --- GLOBAL STATE ---
+        let simulationInterval = null;
+        let isRunning = false;
+        let inputs = [];
+        let simulationData = {
+            processed: 0,
+            collisions: 0,
+            uniqueSlots: 0,
+            startTime: 0,
+            lastUpdateTime: 0,
+            attemptsPerSec: 0,
+            statusLog: []
+        };
+        let hashSlots = [];
+
+        // --- DOM ELEMENTS ---
+        const $ = id => document.getElementById(id);
+
+        const $numSlots = $('numSlots');
+        const $numInputs = $('numInputs');
+        const $hashAlgorithm = $('hashAlgorithm');
+        const $truncationLength = $('truncationLength');
+        const $slotGrid = $('slotGrid');
+        const $logConsole = $('logConsole');
+        const $slotCountDisplay = $('slotCountDisplay');
+        const $processedCount = $('processedCount');
+        const $collisionsCount = $('collisionsCount');
+        const $uniqueSlotsCount = $('uniqueSlotsCount');
+        const $apsCount = $('apsCount');
+        const $mathK = $('mathK');
+        const $mathN = $('mathN');
+        const $outputSpace = $('outputSpace');
+        const $pigeonholeWarning = $('pigeonholeWarning');
+
+        // --- UTILITY FUNCTIONS ---
+
+        /** Generates a random alphanumeric string of a fixed length. */
+        function generateRandomString(length = 8) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        /** Converts an ArrayBuffer hash output to a hexadecimal string. */
+        function bufferToHex(buffer) {
+            return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
+        }
+
+        /** Computes SHA-1 or SHA-256 using the Web Crypto API. */
+        async function computeWebHash(algorithm, input) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(input);
+            const hashBuffer = await crypto.subtle.digest(algorithm.toUpperCase(), data);
+            return bufferToHex(hashBuffer);
+        }
+
+        /** Maps a hash string to a slot index based on truncation. */
+        function mapHashToSlot(hashHex, truncationLength, numSlots) {
+            const truncatedHash = hashHex.slice(0, truncationLength);
+            // Convert truncated hex string to an integer
+            const hashInt = parseInt(truncatedHash, 16);
+            // Map the large integer to one of the N slots using modulo
+            return hashInt % numSlots;
+        }
+
+        // --- SIMULATION CORE FUNCTIONS ---
+
+        /** Initializes the entire demo state and UI. */
+        function initializeDemo() {
+            clearSimulation();
+            const numSlots = parseInt($numSlots.value);
+            const numInputs = parseInt($numInputs.value);
+            
+            // 1. Generate Inputs
+            inputs = Array.from({ length: numInputs }, () => generateRandomString(8));
+
+            // 2. Initialize Slots UI
+            $slotGrid.innerHTML = '';
+            $slotCountDisplay.textContent = numSlots;
+            $slotGrid.style.gridTemplateColumns = `repeat(${Math.ceil(Math.sqrt(numSlots))}, minmax(0, 1fr))`;
+            
+            hashSlots = [];
+            for (let i = 0; i < numSlots; i++) {
+                const slotDiv = document.createElement('div');
+                slotDiv.id = `slot-${i}`;
+                slotDiv.className = 'slot p-1 rounded';
+                slotDiv.innerHTML = `<p class="text-xs text-slate-400 mb-1">#${i}</p><ul class="slot-content"></ul>`;
+                $slotGrid.appendChild(slotDiv);
+                hashSlots[i] = { element: slotDiv, count: 0, items: [] };
+            }
+
+            // 3. Update Math Panel
+            updateTruncationInfo();
+
+            // 4. Update Controls
+            $('startButton').disabled = false;
+            $('pauseButton').disabled = true;
+        }
+
+        /** Clears the simulation state and UI. */
+        function clearSimulation() {
+            clearInterval(simulationInterval);
+            isRunning = false;
+            
+            simulationData = {
+                processed: 0,
+                collisions: 0,
+                uniqueSlots: 0,
+                startTime: 0,
+                lastUpdateTime: 0,
+                attemptsPerSec: 0,
+                statusLog: []
+            };
+
+            $processedCount.textContent = 0;
+            $collisionsCount.textContent = 0;
+            $uniqueSlotsCount.textContent = 0;
+            $apsCount.textContent = '0.00';
+            $logConsole.innerHTML = '';
+            hashSlots.forEach(slot => {
+                slot.element.className = 'slot p-1 rounded';
+                slot.element.querySelector('ul').innerHTML = '';
+                slot.count = 0;
+                slot.items = [];
+            });
+            
+            $('startButton').disabled = false;
+            $('pauseButton').textContent = 'Pause';
+            $('pauseButton').disabled = true;
+        }
+
+        /** The main simulation loop logic. */
+        async function runSimulationStep() {
+            if (!isRunning || simulationData.processed >= inputs.length) {
+                clearInterval(simulationInterval);
+                isRunning = false;
+                logEvent('Demo Finished!', 'text-green-500');
+                $('pauseButton').disabled = true;
+                return;
+            }
+
+            const inputString = inputs[simulationData.processed];
+            const algorithm = $hashAlgorithm.value;
+            const truncationLength = parseInt($truncationLength.value);
+            const numSlots = parseInt($numSlots.value);
+            
+            let hashHex;
+            try {
+                if (algorithm === 'md5') {
+                    hashHex = md5(inputString);
+                } else {
+                    hashHex = await computeWebHash(algorithm, inputString);
+                }
+            } catch (e) {
+                logEvent(`Error hashing: ${e.message}`, 'text-red-500');
+                clearInterval(simulationInterval);
+                isRunning = false;
+                return;
+            }
+
+            const slotIndex = mapHashToSlot(hashHex, truncationLength, numSlots);
+            const slot = hashSlots[slotIndex];
+
+            // Collision Check and Animation
+            let isCollision = slot.count > 0;
+            
+            if (isCollision) {
+                simulationData.collisions++;
+                slot.element.classList.remove('bg-green-800');
+                slot.element.classList.add('bg-red-800');
+                logEvent(`Generated input #${simulationData.processed + 1} (${inputString}). Hash: ${hashHex.slice(0, 10)}... Collision at slot #${slotIndex}`, 'text-red-400');
+            } else {
+                simulationData.uniqueSlots++;
+                slot.element.classList.remove('bg-red-800');
+                slot.element.classList.add('bg-green-800');
+                logEvent(`Generated input #${simulationData.processed + 1} (${inputString}). Hash: ${hashHex.slice(0, 10)}... Unique placement at slot #${slotIndex}`, 'text-green-400');
+            }
+
+            // Add item to slot UI
+            const itemElement = document.createElement('li');
+            itemElement.className = 'slot-item';
+            itemElement.title = `Input: ${inputString}\nHash: ${hashHex}`;
+            itemElement.textContent = inputString;
+            slot.element.querySelector('ul').appendChild(itemElement);
+            slot.count++;
+            slot.items.push(inputString);
+
+            // Remove flash after a short delay
+            setTimeout(() => {
+                slot.element.classList.remove('bg-red-800', 'bg-green-800');
+            }, 300);
+
+            // Update status counters
+            simulationData.processed++;
+            updateStatusCounters();
+        }
+
+        /** Updates the displayed counters and computes attempts per second (APS). */
+        function updateStatusCounters() {
+            const now = performance.now();
+            if (simulationData.startTime === 0) {
+                simulationData.startTime = now;
+                simulationData.lastUpdateTime = now;
+            }
+
+            const elapsedTotal = (now - simulationData.startTime) / 1000;
+            const aps = elapsedTotal > 0 ? simulationData.processed / elapsedTotal : 0;
+            
+            simulationData.attemptsPerSec = aps;
+
+            $processedCount.textContent = simulationData.processed;
+            $collisionsCount.textContent = simulationData.collisions;
+            $uniqueSlotsCount.textContent = simulationData.uniqueSlots;
+            $apsCount.textContent = aps.toFixed(2);
+        }
+
+        /** Appends a message to the simulation log console. */
+        function logEvent(message, colorClass = 'text-slate-400') {
+            const logEntry = document.createElement('p');
+            logEntry.className = colorClass;
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            $logConsole.appendChild(logEntry);
+            $logConsole.scrollTop = $logConsole.scrollHeight;
+        }
+
+        /** Updates the Pigeonhole Principle math panel. */
+        function updateTruncationInfo() {
+            const K = parseInt($truncationLength.value);
+            const N = parseInt($numSlots.value);
+            const M = parseInt($numInputs.value);
+            
+            $mathK.textContent = K;
+            $mathN.textContent = N;
+
+            // Output space = 16^K
+            const outputSpace = Math.pow(16, K);
+            $outputSpace.textContent = outputSpace.toLocaleString();
+            
+            const warningElement = $pigeonholeWarning;
+            let warningText = '';
+
+            if (outputSpace < N) {
+                warningText = `Warning: The truncated output space (16^${K} = ${outputSpace.toLocaleString()}) is smaller than the number of slots (${N}). Many slots will remain empty.`;
+                warningElement.classList.remove('bg-red-900/50');
+                warningElement.classList.add('bg-yellow-900/50');
+            } else if (M > outputSpace) {
+                warningText = `Inputs (${M}) > Output Space (${outputSpace.toLocaleString()}). **By the Pigeonhole Principle, collisions are guaranteed!**`;
+                warningElement.classList.add('bg-red-900/50');
+                warningElement.classList.remove('bg-yellow-900/50');
+            } else if (M > N) {
+                warningText = `Inputs (${M}) > Slots (${N}). Collisions are guaranteed because the mapping (hash modulo N) reduces the effective output space.`;
+                warningElement.classList.remove('bg-red-900/50');
+                warningElement.classList.add('bg-yellow-900/50');
+            } else {
+                warningText = `Inputs (${M}) <= Slots (${N}) and M <= Output Space. Collisions are still highly probable due to non-uniform mapping (birthday paradox).`;
+                warningElement.classList.remove('bg-red-900/50', 'bg-yellow-900/50');
+                warningElement.classList.add('bg-slate-700');
+            }
+            warningElement.querySelector('p:last-child').innerHTML = warningText;
+        }
+
+
+        // --- HASH INSPECTOR FUNCTIONS ---
+
+        /** Computes and displays all hash types for the user input. */
+        async function computeHashes() {
+            const input = $('inspectorInput').value || 'empty input';
+            
+            const results = {};
+            
+            // MD5 (In-page library)
+            results.md5 = md5(input);
+
+            // SHA-1 (Web Crypto API)
+            results.sha1 = await computeWebHash('SHA-1', input);
+
+            // SHA-256 (Web Crypto API)
+            results.sha256 = await computeWebHash('SHA-256', input);
+
+            // Update UI
+            $('inspectorMD5').textContent = results.md5;
+            $('inspectorSHA1').textContent = results.sha1;
+            $('inspectorSHA256').textContent = results.sha256;
+
+            const statusJson = {
+                input: input,
+                inputLength: input.length,
+                md5: results.md5,
+                sha1: results.sha1,
+                sha256: results.sha256,
+                time: new Date().toISOString()
+            };
+
+            $('inspectorJSON').textContent = JSON.stringify(statusJson, null, 2);
+        }
+
+        // --- EVENT HANDLERS ---
+
+        document.addEventListener('DOMContentLoaded', initializeDemo);
+        $numSlots.addEventListener('change', initializeDemo);
+        $numInputs.addEventListener('change', initializeDemo);
+        $truncationLength.addEventListener('input', updateTruncationInfo);
+
+        $('startButton').addEventListener('click', () => {
+            if (simulationData.processed === 0) {
+                initializeDemo();
+                logEvent('Demo started. Generating inputs...', 'text-indigo-400');
+                simulationData.startTime = performance.now();
+            }
+            
+            isRunning = true;
+            $('startButton').disabled = true;
+            $('pauseButton').disabled = false;
+            $('pauseButton').textContent = 'Pause';
+            
+            // Run simulation step every 50ms (20 FPS)
+            simulationInterval = setInterval(runSimulationStep, 50);
+        });
+
+        $('pauseButton').addEventListener('click', () => {
+            isRunning = !isRunning;
+            if (isRunning) {
+                $('pauseButton').textContent = 'Pause';
+                simulationInterval = setInterval(runSimulationStep, 50);
+                logEvent('Demo resumed.', 'text-yellow-400');
+            } else {
+                $('pauseButton').textContent = 'Resume';
+                clearInterval(simulationInterval);
+                logEvent('Demo paused.', 'text-yellow-400');
+            }
+        });
+
+        $('resetButton').addEventListener('click', initializeDemo);
+        $('computeHashesButton').addEventListener('click', computeHashes);
+    </script>
+</body>
+</html>
