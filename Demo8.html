@@ -55,7 +55,7 @@
         <h1 class="text-3xl font-bold text-indigo-400 mb-6">Cryptographic Hashing & Pigeonhole Demo 🐦</h1>
 
         <div id="educational-disclaimer" class="p-3 mb-6 bg-red-900/50 border-l-4 border-red-500 rounded text-sm">
-            **DISCLAIMER:** This demonstration uses **truncated hashes** for educational purposes to quickly visualize collisions. It **does not** represent real-world cryptographic vulnerability or encourage attacks. Real cryptographic hashes are vastly longer and collisions are computationally infeasible to find.
+            <b>DISCLAIMER</b>: This demonstration uses <b>truncated hashes</b> for educational purposes to quickly visualize collisions. It <b>does not</b> represent real-world cryptographic vulnerability or encourage attacks. Real cryptographic hashes are vastly longer and collisions are computationally infeasible to find.
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -171,25 +171,25 @@
                 <h3 class="text-xl font-semibold text-indigo-300 mb-2">What is a Hash Function?</h3>
                 <p>A cryptographic hash function is a one-way mathematical algorithm that takes an input (or 'message') of arbitrary length and outputs a fixed-length string of bytes, typically represented as a hexadecimal number (the 'hash' or 'digest'). Key properties include:</p>
                 <ul class="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
-                    <li>**Deterministic:** The same input always produces the same output.</li>
-                    <li>**Pre-image Resistance (One-Way):** It's computationally infeasible to reverse the process—to determine the original input from the hash output.</li>
-                    <li>**Collision Resistance:** It's computationally infeasible to find two different inputs that produce the same hash output (a collision).</li>
+                    <li><b>Deterministic:</b> The same input always produces the same output.</li>
+                    <li><b>Pre-image Resistance (One-Way):</b> It's computationally infeasible to reverse the process—to determine the original input from the hash output.</li>
+                    <li><b>Collision Resistance:</b> It's computationally infeasible to find two different inputs that produce the same hash output (a collision).</li>
                 </ul>
                 <p class="text-sm mt-2 text-slate-400">Hashes are used for digital signatures, password storage (never store passwords directly!), and verifying data integrity.</p>
             </div>
 
             <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
                 <h3 class="text-xl font-semibold text-indigo-300 mb-2">What is the Pigeonhole Principle?</h3>
-                <p>The Pigeonhole Principle is a simple but profound concept in mathematics: **if you have more items (pigeons) than containers (pigeonholes), at least one container must contain more than one item.**</p>
-                <p class="text-sm mt-2">In cryptography, the "pigeons" are the infinite number of possible inputs (messages), and the "pigeonholes" are the finite number of possible hash outputs (the fixed-length space). Since the input space is virtually infinite and the output space is finite (e.g., $2^{256}$ for SHA-256), **collisions are mathematically guaranteed to exist**.</p>
+                <p>The Pigeonhole Principle is a simple but profound concept in mathematics: <b>if you have more items (pigeons) than containers (pigeonholes), at least one container must contain more than one item.</b></p>
+                <p class="text-sm mt-2">In cryptography, the "pigeons" are the infinite number of possible inputs (messages), and the "pigeonholes" are the finite number of possible hash outputs (the fixed-length space). Since the input space is virtually infinite and the output space is finite (e.g., 2<sup>256</sup> for SHA-256), <b>collisions are mathematically guaranteed to exist.</b></p>
             </div>
 
             <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
                 <h3 class="text-xl font-semibold text-indigo-300 mb-2">Why Do Collisions Matter?</h3>
-                <p>In cryptography, finding a collision means an attacker could potentially replace an authentic message or document with a fraudulent one, yet still produce the same digital signature or integrity check. This breaks the **trust** model of the hash function.</p>
+                <p>In cryptography, finding a collision means an attacker could potentially replace an authentic message or document with a fraudulent one, yet still produce the same digital signature or integrity check. This breaks the <b>trust</b> model of the hash function.</p>
                 <ul class="list-disc list-inside ml-4 mt-2 text-sm space-y-1">
-                    <li>**MD5 and SHA-1** are considered cryptographically broken because methods exist to find collisions faster than brute force ($2^{128}$ or $2^{80}$ respectively).</li>
-                    <li>**SHA-256** remains strong because while collisions exist mathematically (Pigeonhole Principle), the time and energy required to find even one is currently infeasible (estimated to be about $2^{128}$ operations).</li>
+                    <li><b>MD5 and SHA-1</b> are considered cryptographically broken because methods exist to find collisions faster than brute force (2<sup>128</sup> or 2<sup>80</sup> respectively).</li>
+                    <li><b>SHA-256</b> remains strong because while collisions exist mathematically (Pigeonhole Principle), the time and energy required to find even one is currently infeasible (estimated to be about 2<sup>128</sup> operations).</li>
                 </ul>
             </div>
         </div>
