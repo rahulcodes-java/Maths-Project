@@ -37,11 +37,14 @@ This project is implemented as a single HTML file (no backend). It uses the brow
 
 ## 🚀 How to run
 
-1. Download or copy the HTML file (named something like `index.html`).
+1. Hover to the website available on the right pane of this README file.
 2. Open it in any modern browser (Chrome, Edge, Firefox, Safari).
    - No server or installation required — the file runs entirely in the browser.
 3. Use the controls on the left to configure N, M, algorithm, and truncation K.
 4. Click **Start Demo** to begin. Watch as the grid populates and collisions are highlighted.
+
+PS :)
+Dont Forget to clear/reset before checking out another algorithm
 
 ---
 
