@@ -134,7 +134,7 @@ This project is implemented as a single HTML file (no backend). It uses the brow
 ![Dashboard_demo1](dashboard1.png)
 
 
-![Dashboard_demo2](dashboard1.png)
+![Dashboard_demo2](dashboard2.png)
 
 
 
@@ -146,11 +146,9 @@ This project is implemented as a single HTML file (no backend). It uses the brow
 **A:** Because the demo uses truncated hashes (small K) and a limited number of slots. This reduces the output space and makes collisions visible on a laptop in seconds.
 
 **Q: Is this a real cryptographic attack?**
-**A:** No. This is an educational visualization. Real cryptographic collision attacks against full-length strong hashes require advanced techniques and massive compute resources.
+**A:** No. This is an educational visualization. Real cryptographic collision attacks against full-length strong hashes require advanced techniques and massive computing resources.
 
 **Q: Can I change the mapping function?**
 **A:** Yes — the demo uses parseInt(truncHash, 16) % N. You can modify the mapping logic in the script if desired.
 
 ---
-```markdown
-![Demo Screenshot](screenshot.png)
