@@ -129,15 +129,18 @@ This project is implemented as a single HTML file (no backend). It uses the brow
 
 ## 🖼️ Screenshots(Further modifications needed)
 
-Add a screenshot to your repo
+### Demo Screenshots 
 
-```markdown
-Demo_ss (ss.png)
-```
+![Dashboard_demo1](dashboard1.png)
+
+
+![Dashboard_demo2](dashboard1.png)
+
+
 
 ---
 
-### 🔁 FAQ — Common questions
+## 🔁 FAQ — Common questions
 
 **Q: Why do collisions appear so quickly?**
 **A:** Because the demo uses truncated hashes (small K) and a limited number of slots. This reduces the output space and makes collisions visible on a laptop in seconds.
